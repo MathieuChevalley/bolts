@@ -2,18 +2,20 @@ import stainless.lang._
 import stainless.collection._
 
 object Main {
+  type Word[A] = List[A]
+
   case class Language[A](oo: Boolean, dd: A => Language[A]) {
     def ===(that: Language[A]): Boolean = {
-      forall((w: List[A]) => is_member(w,this) == is_member(w,that))
+      forall((w: List[A]) => this.contains(w) == that.contains(w))
     }
-  }
 
-  type Word[A] = List[A]
-  
-  // checks membership of a word in a language
-  def is_member[A](w: List[A], l: Language[A]): Boolean = w match {
-    case Nil() => l.oo
-    case Cons(x,xs) => is_member(xs, l.dd(x))
+    def contains(w: Word[A]): Boolean = w match {
+      case Nil() => oo
+      case Cons(x,xs) => dd(x).contains(xs)
+    }
+
+    def +(that: Language[A]): Language[A] =
+      Language(this.oo || that.oo, a => this.dd(a) + that.dd(a))
   }
 
   // the empty language
@@ -26,36 +28,89 @@ object Main {
   def atom[A](a: A): Language[A] =
     Language(false, b => if (b == a) one else zero)
 
-  // the union of two languages
-  def plus[A](l1: Language[A], l2: Language[A]): Language[A] =
-    Language(l1.oo || l2.oo, a => plus(l1.dd(a), l2.dd(a)))
-
   // zero is neutral for plus
   def plus_zerol[A](l: Language[A]) = {
-    plus(zero,l) === l
+    zero + l === l
   } holds
 
   def plus_zeror[A](l: Language[A]) = {
-    plus(l,zero) === l
+    l + zero === l
   } holds
+
+  def plus_dd[A](l1: Language[A], l2: Language[A], x: A): Boolean = {
+    (l1 + l2).dd(x) == l1.dd(x) + l2.dd(x)
+  } holds
+
+  def plus_lemma[A](l1: Language[A], l2: Language[A], w: Word[A]): Boolean = {
+    assert(
+      w match {
+        case Nil() => true
+        case Cons(x,xs) => plus_lemma(l1.dd(x), l2.dd(x), xs) // induction hypothesis
+      }
+    )
+    (l1 + l2).contains(w) == (l1.contains(w) || l2.contains(w))
+  } holds
+
+  // plus is associative (contains)
+  def plus_assoc_lemma[A](l1: Language[A], l2: Language[A], l3: Language[A], w: Word[A]) = {
+    assert(plus_lemma(l1,l2,w))
+    assert(plus_lemma(l2,l3,w))
+    assert(plus_lemma(l1,l2 + l3,w))
+    assert(plus_lemma(l1 + l2,l3,w))
+    (l1 + (l2 + l3)).contains(w) == ((l1 + l2) + l3).contains(w)
+  } holds
+
+  def plus_assoc_lemma(l1,l2,l3,w): (l1 + (l2 + l3)).contains(w) == ((l1 + l2) + l3).contains(w)
 
   // plus is associative
   def plus_assoc[A](l1: Language[A], l2: Language[A], l3: Language[A]) = {
-    plus(l1,plus(l2,l3)) === plus(plus(l1,l2),l3)
+    assert(forall((w: Word[A]) => {
+      plus_assoc_lemma(l1,l2,l3,w)
+    }))
+    assert(forall((w: Word[A]) => {
+      (l1 + (l2 + l3)).contains(w) == ((l1 + l2) + l3).contains(w)
+    }))
+    l1 + (l2 + l3) === (l1 + l2) + l3
   } holds
 
-  // plus is commutative
-  def plus_comm[A](l1: Language[A], l2: Language[A]) = {
-    plus(l1,l2) === plus(l2,l1)
+  def forall_intro(p) = {
+    forall(p)
   } holds
 
-  // a combination of associativity and commutativity
-  def plus_rotate[A](l1: Language[A], l2: Language[A], l3: Language[A]) = {
-    plus(l1,plus(l2,l3)) === plus(l2,plus(l1,l3))
-  } holds
-  
-  // plus is idempotent
-  def plus_idem[A](l: Language[A]) = {
-    plus(l,l) === l
+  def plus_assoc[A](l1: Language[A], l2: Language[A], l3: Language[A]): "l1 + (l2 + l3) === (l1 + l2) + l3" = {
+    w => plus_assoc_lemma(l1,l2,l3,w)
   }
+
+  // // plus is commutative (contains)
+  // def plus_comm_lemma[A](l1: Language[A], l2: Language[A], w: Word[A]) = {
+  //   plus_lemma(l1,l2,w)
+  //   plus_lemma(l2,l1,w)
+  //   (l1 + l2).contains(w) == (l2 + l1).contains(w)
+  // } holds
+
+  // // plus is commutative
+  // def plus_comm[A](l1: Language[A], l2: Language[A]) = {
+  //   assert(forall((w: Word[A]) => {
+  //     assert(plus_comm_lemma(l1,l2,w))
+  //     (l1 + l2).contains(w) == (l2 + l1).contains(w)
+  //   }))
+  //   l1 + l2 === l2 + l1
+  // } holds
+
+  // // a combination of associativity and commutativity
+  // def plus_rotate[A](l1: Language[A], l2: Language[A], l3: Language[A]) = {
+  //   assert(plus_assoc(l1,l2,l3))
+  //   assert(plus_comm(l1,l2))
+  //   assert(plus_assoc(l2,l1,l3))
+  //   l1 + (l2 + l3) === l2 + (l1 + l3)
+  // } holds
+  
+  // // plus is idempotent
+  // def plus_idem[A](l: Language[A]) = {
+  //   assert(forall((w: Word[A]) => {
+  //     assert(plus_lemma(l,l,w))
+  //     (l + l).contains(w) == l.contains(w)
+  //   }))
+  //   l + l === l
+  // } holds
 }
