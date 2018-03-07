@@ -15,10 +15,24 @@ object Main {
     }
 
     // union
+    // We will automatically infer (and prove by induction) that:
+    // Lemma 1: For every n, if this and that are usable n times, then 
+    // this + that is usable n times.
+    // Proof.
+    // By definition, this.dd(a) and that.dd(a) are usable n-1 times
+    // By induction hypothesis, this.dd(a) + that.dd(a) is usable n-1 times,
+    // and we conclude that 
+    // Lang(this.oo || that.oo, a => this.dd(a) + that.dd(a)) is usable n times
     def +(that: Lang[A]): Lang[A] =
       Lang(this.oo || that.oo, a => this.dd(a) + that.dd(a))
 
     // concatenation
+    // Similarly, we can prove:
+    // Lemma 2: For every n, if this and that are usable n times, then
+    // this $ that is usable n times.
+    // Proof.
+    // Similar to Lemma 1. Moreover we have to use Lemma 1 because the 
+    // definition of $ involves +.
     def $(that: Lang[A]): Lang[A] = 
       Lang(this.oo && that.oo, a =>
         if (this.oo) 
@@ -28,10 +42,18 @@ object Main {
       )
 
     // intersection
+    // Lemma 3: For every n, if this and that are usable n times, then
+    // this n that is usable n times.
+    // Proof.
+    // Similar to Lemma 1.
     def n(that: Lang[A]): Lang[A] = 
       Lang(this.oo && that.oo, a => this.dd(a) n that.dd(a))
 
     // Kleene iteration
+    // Lemma 4: for every n, if this is usable n times, then this.star is 
+    // usable n times.
+    // Proof.
+    // Similar to Lemma 1. Uses Lemma 2.
     def star: Lang[A] =
       Lang(true, a => this.dd(a) $ star)
 
