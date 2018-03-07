@@ -58,10 +58,18 @@ object Main {
       Lang(true, a => this.dd(a) $ star)
 
     // complement
+    // Lemma 5: for every n, if this is usable n times, then this.c is usable
+    // n times.
+    // Proof.
+    // Similar to Lemma 1.
     def c: Lang[A] =
       Lang(!oo, a => dd(a).c)
 
     // shuffle operator
+    // Lemma 6: for every n, if this and that are usable n times, then 
+    // this | that is usable n times.
+    // Proof.
+    // Again by induction on n, and makes use of Lemma 1.
     def |(that: Lang[A]): Lang[A] =
       Lang(this.oo && that.oo, a =>
         (this.dd(a) | that) +
