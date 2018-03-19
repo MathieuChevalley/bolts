@@ -4,9 +4,12 @@ import stainless.collection._
 object Main {
   type Word[A] = List[A]
 
+  def equivalentContains[A](l1: Lang[A], l2: Lang[A], w: Word[A]) = 
+    l1.contains(w) == l2.contains(w)
+
   case class Lang[A](oo: Boolean, dd: A => Lang[A]) {
     def ===(that: Lang[A]): Boolean = {
-      forall((w: List[A]) => this.contains(w) == that.contains(w))
+      forall((w: Word[A]) => equivalentContains(this,that,w))
     }
 
     def =!=(that: Lang[A]): Boolean = !(this === that)
@@ -14,6 +17,11 @@ object Main {
     def contains(w: Word[A]): Boolean = w match {
       case Nil() => oo
       case Cons(x,xs) => dd(x).contains(xs)
+    }
+
+    def residual(w: Word[A]): Lang[A] = w match {
+      case Nil() => this
+      case Cons(x,xs) => dd(x).residual(xs)
     }
 
     // union
@@ -120,10 +128,58 @@ object Main {
   // the full language
   def full[A]: Lang[A] = Lang(true, _ => full)
 
-  // // zero is neutral for plus
-  // def plus_zerol[A](l: Lang[A]) = {
-  //   zero + l === l
-  // } holds
+  def residual_contains_oo[A](l: Lang[A], w: Word[A]): Boolean = {
+    w match {
+      case Nil() => 
+        l.residual(w).oo == l.contains(w)
+      case Cons(x,xs) => 
+        assert(residual_contains_oo(l.dd(x), xs))
+        l.residual(w).oo == l.contains(w)
+    }
+  } holds
+
+  def plus_zerol_residual[A](l: Lang[A], w: Word[A]): Boolean = {
+    w match {
+      case Nil() => 
+        (zero + l).residual(w) === zero + l.residual(w)
+      case Cons(x,xs) =>
+        assert(plus_zerol_residual(l.dd(x), xs))
+        // these assertions show the reasoning but are not needed
+        // assert((zero + l).residual(w) == (zero + l).dd(x).residual(xs))
+        // assert((zero + l).residual(w) == (zero + l.dd(x)).residual(xs))
+        // assert((zero + l).residual(w) == zero + l.dd(x).residual(xs)) // by induction hypothesis
+        // assert((zero + l).residual(w) == zero + l.residual(w))
+        (zero + l).residual(w) === zero + l.residual(w)
+    }
+  } holds
+
+  def plus_zerol_contains[A](l: Lang[A], w: Word[A]) = {
+    assert(residual_contains_oo(zero + l, w))
+    assert(residual_contains_oo(l, w))
+    assert(plus_zerol_residual(l, w))
+    
+    // instantiate the equality (zero + l).residual(w) === zero + l.residual(w) on the empty word
+    assert(equivalentContains(
+      (zero + l).residual(w),
+      zero + l.residual(w),
+      Nil()
+    ))
+
+    // these assertions show the reasoning but are not needed
+    // assert((zero + l).contains(w) == (zero + l).residual(w).oo)
+    // assert((zero + l).contains(w) == (zero + l.residual(w)).oo)
+    // assert((zero + l).contains(w) == l.residual(w).oo)
+    (zero + l).contains(w) == l.contains(w)  
+  } holds
+
+  // zero is neutral for plus
+  def plus_zerol[A](l: Lang[A]) = {
+    assert(forall((w: Word[A]) => {
+      assert(plus_zerol_contains(l,w))
+      equivalentContains(zero + l, l, w)
+    }))
+    zero + l === l
+  } holds
 
   // def plus_zeror[A](l: Lang[A]) = {
   //   l + zero === l
