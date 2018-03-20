@@ -1,5 +1,6 @@
 import stainless.lang._
 import stainless.collection._
+import stainless.annotation._
 
 object Main {
   type Word[A] = List[A]
@@ -138,44 +139,21 @@ object Main {
     }
   } holds
 
-  def plus_zerol_residual[A](l: Lang[A], w: Word[A]): Boolean = {
+  def plus_zerol_contains[A](l: Lang[A], w: Word[A]): Boolean = {
     w match {
       case Nil() => 
-        (zero + l).residual(w) === zero + l.residual(w)
+        (zero + l).contains(w) == l.contains(w)  
       case Cons(x,xs) =>
-        assert(plus_zerol_residual(l.dd(x), xs))
-        // these assertions show the reasoning but are not needed
-        // assert((zero + l).residual(w) == (zero + l).dd(x).residual(xs))
-        // assert((zero + l).residual(w) == (zero + l.dd(x)).residual(xs))
-        // assert((zero + l).residual(w) == zero + l.dd(x).residual(xs)) // by induction hypothesis
-        // assert((zero + l).residual(w) == zero + l.residual(w))
-        (zero + l).residual(w) === zero + l.residual(w)
+        assert(plus_zerol_contains(l.dd(x), xs))
+        (zero + l).contains(w) == l.contains(w)  
     }
-  } holds
-
-  def plus_zerol_contains[A](l: Lang[A], w: Word[A]) = {
-    assert(residual_contains_oo(zero + l, w))
-    assert(residual_contains_oo(l, w))
-    assert(plus_zerol_residual(l, w))
     
-    // instantiate the equality (zero + l).residual(w) === zero + l.residual(w) on the empty word
-    assert(equivalentContains(
-      (zero + l).residual(w),
-      zero + l.residual(w),
-      Nil()
-    ))
-
-    // these assertions show the reasoning but are not needed
-    // assert((zero + l).contains(w) == (zero + l).residual(w).oo)
-    // assert((zero + l).contains(w) == (zero + l.residual(w)).oo)
-    // assert((zero + l).contains(w) == l.residual(w).oo)
-    (zero + l).contains(w) == l.contains(w)  
   } holds
-
+  
   // zero is neutral for plus
   def plus_zerol[A](l: Lang[A]) = {
     assert(forall((w: Word[A]) => {
-      assert(plus_zerol_contains(l,w))
+      assert(plus_zerol_contains(l, w))
       equivalentContains(zero + l, l, w)
     }))
     zero + l === l
